@@ -1,4 +1,5 @@
 const express = require('express');
+const fetch = require('node-fetch');
 const app = express();
 
 // Middleware to parse JSON bodies
@@ -10,13 +11,6 @@ app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
   console.log('Headers:', req.headers);
   console.log('Body:', req.body);
-  
-  // Log response
-  const oldSend = res.send;
-  res.send = function(data) {
-    console.log(`[${new Date().toISOString()}] Response:`, data);
-    return oldSend.apply(res, arguments);
-  };
   
   next();
 });
@@ -107,6 +101,7 @@ app.post('/webhook', async (req, res) => {
   console.log('Webhook received at:', new Date().toISOString());
   try {
     const update = req.body;
+    console.log('Update body:', JSON.stringify(update, null, 2));
     
     if (!update) {
       console.log('No update body received');
@@ -114,7 +109,7 @@ app.post('/webhook', async (req, res) => {
     }
     
     if (!update.message || !update.message.text) {
-      console.log('No message or text in update:', update);
+      console.log('No message or text in update:', JSON.stringify(update, null, 2));
       return res.send('OK');
     }
 
@@ -146,43 +141,7 @@ app.post('/webhook', async (req, res) => {
   }
 });
 
-// Health check endpoint
-app.get('/', (req, res) => {
-  res.json({
-    status: 'running',
-    timestamp: new Date().toISOString(),
-    env: {
-      hasTelegramToken: !!process.env.TELEGRAM_BOT_TOKEN,
-      hasMistralKey: !!process.env.MISTRAL_API_KEY,
-      projectDomain: process.env.PROJECT_DOMAIN
-    }
-  });
-});
-
-// Test endpoint to verify webhook
-app.post('/test-webhook', (req, res) => {
-  console.log('Test webhook received:', req.body);
-  res.send('Test webhook received');
-});
-
-// Add these new test endpoints
-app.get('/debug', (req, res) => {
-  res.send('Debug endpoint working!');
-});
-
-app.post('/debug', (req, res) => {
-  console.log('Debug POST received:', req.body);
-  res.json({
-    received: true,
-    body: req.body,
-    env: {
-      hasTelegramToken: !!process.env.TELEGRAM_BOT_TOKEN,
-      hasMistralKey: !!process.env.MISTRAL_API_KEY
-    }
-  });
-});
-
-// Add this new endpoint after your other endpoints and before app.listen
+// Setup webhook endpoint
 app.get('/setup-webhook', async (req, res) => {
   try {
     const token = process.env.TELEGRAM_BOT_TOKEN;
@@ -224,6 +183,19 @@ app.get('/setup-webhook', async (req, res) => {
       error: error.message
     });
   }
+});
+
+// Health check endpoint
+app.get('/', (req, res) => {
+  res.json({
+    status: 'running',
+    timestamp: new Date().toISOString(),
+    env: {
+      hasTelegramToken: !!process.env.TELEGRAM_BOT_TOKEN,
+      hasMistralKey: !!process.env.MISTRAL_API_KEY,
+      projectDomain: process.env.PROJECT_DOMAIN
+    }
+  });
 });
 
 // Start the server
